@@ -19,7 +19,7 @@ Options:
 
 """
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 # standard lib import
 import os
@@ -91,7 +91,6 @@ class Package:
         try:
             name, curated, tag, description = o[0]
             status = ',curated,' if curated == 1 else ',normal,'
-            print("name, status, tag, description")
             print(name + status + tag + "," + description)
             return o
         except IndexError:
@@ -251,8 +250,9 @@ class __Control:
                       args['--tag'], args['--desc'])
         with Database(self.db_path) as db:
             if args['--set'] or args['--unset']:
+                db.repopulate()
                 pkg.modify(db)
-            self.filter(db)
+                db.conn.commit()
             pkg.display(db)
 
     def filter(self, db) -> None:

@@ -5,8 +5,6 @@ import io
 import pytest
 from pcurate import Database, Package
 
-__version__ = '0.1.0'
-
 
 @pytest.fixture
 def db():
