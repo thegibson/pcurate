@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "pcurate"
+version = "0.1.1"
+description = "utility for curating Arch Linux software package lists"
+readme = 'README.md'
+authors = ["Scott Reed <multivac@posteo.net>"]
+repository = "https://github.com/thegibson/pcurate"
+license = "MIT"
+include = [
+    "LICENSE",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+docopt = "^0.6.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.3"
+
+[tool.poetry.scripts]
+pcurate = 'pcurate:main'
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
