@@ -178,8 +178,8 @@ class Database:
 
         if args['--verbose']:
             print("name, status, tag, description")
-        o = self.query('SELECT * FROM packages WHERE curated = :curated', {
-                       'curated': args['--curated']})
+        o = self.query("""SELECT * FROM packages WHERE curated = :curated
+                       ORDER BY name""", {'curated': args['--curated']})
         status = ',curated,' if args['--curated'] else ',normal,'
         for i in range(len(o)):
             if not args['--verbose']:
@@ -191,7 +191,8 @@ class Database:
     def missing(self, args) -> list:
         """takes dict of parsed CLI args, output list of missing curated"""
 
-        o = self.query('SELECT * FROM packages WHERE curated = 1')
+        o = self.query("""SELECT * FROM packages WHERE curated = 1
+                       ORDER BY name""")
         pkglist = subprocess.check_output(['pacman', '-Qqe'])
         pkglist = pkglist.decode('utf-8')
         result = ''
