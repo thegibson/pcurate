@@ -49,10 +49,6 @@ class __Control:
         with io.StringIO(pkgnames) as filter_file:
             self.db.filter(filter_file)
 
-    def missing(self, args):
-
-        return self.db.missing(args)
-
 
 def test_package_set(db) -> None:
     """test setting a package as curated status"""
@@ -143,13 +139,12 @@ def test_filtering(db) -> None:
 def test_missing(db) -> None:
     """test detection of missing curated packages"""
 
-    c = __Control(db)
     # add curated test package
     pkg = Package('test_package', 1, 'test_tag', 'test_description')
     pkg.add(db)
     pkg = Package('base', 1, 'test_tag', 'test_description')
     pkg.add(db)
-    m = c.missing({'--verbose': False})
+    m = db.missing({'--verbose': False})
     # test_package is not actually installed so should report missing
     assert 'test_package' in m.split('\n')
     # base package should be installed so should not report missing

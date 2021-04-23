@@ -19,7 +19,7 @@ Options:
 
 """
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 # standard lib import
 import os
@@ -70,18 +70,18 @@ class Package:
         """takes db connect obj, adds a package and its attributes to db"""
 
         db.execute("""INSERT OR IGNORE INTO packages VALUES (:name,
-        :curated, :tag, :description)""", {
-            'name': self.name, 'curated': self.curated,
-            'tag': self.tag, 'description': self.description})
+                   :curated, :tag, :description)""", {
+                   'name': self.name, 'curated': self.curated,
+                   'tag': self.tag, 'description': self.description})
 
     def modify(self, db) -> None:
         """takes db connect obj, modifies attributes of a package in db"""
 
         db.execute("""UPDATE packages SET curated = ifnull(:curated,curated),
-        tag = ifnull(:tag,tag), description = ifnull(:description,description)
-        WHERE name = :name""", {
-            'name': self.name, 'curated': self.curated,
-            'tag': self.tag, 'description': self.description})
+                   tag = ifnull(:tag,tag), description = ifnull(:description,
+                   description) WHERE name = :name""", {
+                   'name': self.name, 'curated': self.curated,
+                   'tag': self.tag, 'description': self.description})
 
     def display(self, db) -> str:
         """takes db connect obj, displays attribs stored for package in db"""
@@ -114,8 +114,8 @@ class Database:
 
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS packages
-        (name text PRIMARY KEY,curated integer,tag text,description text)""")
+        self.cursor.execute("""CREATE TABLE IF NOT EXISTS packages (name text PRIMARY KEY,
+                            curated integer,tag text,description text)""")
 
     def __enter__(self) -> 'Database':
         """bind db instance to context manager"""
@@ -171,7 +171,7 @@ class Database:
         grp_filter = subprocess.getstatusoutput('pacman -Sgq ' + filters)
         for name in grp_filter[1].split('\n') + filters.split(' '):
             self.execute("""DELETE FROM packages WHERE name = :name
-            and curated = 0""", {'name': name})
+                         and curated = 0""", {'name': name})
 
     def output(self, args) -> list:
         """takes dict of parsed CLI args, sends formatted db info to stdout"""
