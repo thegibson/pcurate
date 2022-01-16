@@ -252,8 +252,8 @@ class __Control:
         pkg = Package(args['PACKAGE_NAME'], args['--set'],
                       args['--tag'], args['--desc'])
         with Database(self.db_path) as db:
+            db.repopulate()
             if args['--set'] or args['--unset']:
-                db.repopulate()
                 pkg.modify(db)
                 db.conn.commit()
             pkg.display(db)
