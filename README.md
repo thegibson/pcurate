@@ -52,7 +52,7 @@ Display information for a package
 
 Set a package as curated status (a keeper)
 	
-	$ pcurate -s neovim
+	$ pcurate -s vim
 
 Unset a package to revoke its curated status (and remove any tag or custom description)
 
