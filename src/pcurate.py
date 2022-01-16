@@ -19,7 +19,7 @@ Options:
 
 """
 
-__version__ = '0.1.3'
+__version__ = '0.1.5'
 
 # standard lib import
 import os
