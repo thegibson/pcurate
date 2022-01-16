@@ -163,7 +163,7 @@ class Database:
         """takes filter file obj, filter pkg or pkg group members from db"""
 
         filters = ''
-        for i, line in enumerate(filter_file):
+        for line in filter_file:
             filters += line
             # convert to whitespace separated for use as pacman args
             filters = filters.replace('\n', ' ')
