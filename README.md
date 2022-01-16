@@ -17,9 +17,9 @@ Note:  Package version information is untracked because Arch Linux is a rolling 
 
 ###  Installation
 
-Install with pip
+Install or upgrade to latest version using pip
 
-	$ python -m pip install pcurate
+	$ python -m pip install pcurate --user --upgrade
 
 ### Usage
 
