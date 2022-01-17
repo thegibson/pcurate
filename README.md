@@ -54,7 +54,7 @@ Display information for a package
 
 Set a package as curated status (a keeper)
 
-	$ pcurate -s neovim
+	$ pcurate -s vim
 
 Unset a package to revoke its curated status (and remove any tag or custom description)
 
@@ -85,7 +85,7 @@ Set curated status for all packages listed in an existing pkglist.txt file (a si
 
 Export all curated native packages to a new pkglist.txt file
 
-	$ pcurate -c -n > pkglist.txt
+	$ pcurate -cn > pkglist.txt
 
 Send the resulting pkglist.txt to package manager for automatic installation
 
@@ -93,7 +93,7 @@ Send the resulting pkglist.txt to package manager for automatic installation
 
 Write a detailed list of curated packages to csv format so you can view it as a spreadsheet, etc.
 
-	$ pcurate -c -v > pkglist.csv
+	$ pcurate -cv > pkglist.csv
 
 #### Configuration
 
