@@ -88,9 +88,9 @@ class Package:
         db.execute("""UPDATE packages SET curated = ifnull(:curated,curated),
                    tag = ifnull(:tag,tag), description = ifnull(:description,
                    description), native = ifnull(:native,native) WHERE name
-                   = :name""", {'name': self.name, 'curated': self.curated,
-                   'tag': self.tag,'description': self.description,
-                   'native': self.native})
+                   = :name""", {
+                   'name': self.name, 'curated': self.curated, 'tag': self.tag,
+                   'description': self.description, 'native': self.native})
 
     def display(self, db) -> str:
         """takes db connect obj, displays attribs stored for package in db"""
@@ -175,7 +175,7 @@ class Database:
         for line in pkglist.split('\n'):
             if re.search('^Name', line):
                 _, name = line.split(': ', 1)
-                native=0
+                native = 0
                 for record in nativelist[1].split('\n'):
                     native = native + 1 if record == name else native
             elif re.search('^Description', line):
@@ -185,7 +185,7 @@ class Database:
                 pkg.add(self.cursor)
                 # refresh entries for curated pkg to set their native status
                 o = self.query("""Select * FROM packages WHERE curated = 1 and
-                               name = :name""",{'name': name})
+                               name = :name""", {'name': name})
                 for i in range(len(o)):
                     tag = o[i][2]
                     description = o[i][3]
