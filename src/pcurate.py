@@ -2,7 +2,7 @@
 
 Usage:
   pcurate PACKAGE_NAME [-u | -s [-t TAG] [-d DESCRIPTION]]
-  pcurate ( -c | -n | -m ) [-v]
+  pcurate ( -c | -r | -m ) [-n | -f] [-v]
   pcurate ( -h | --help | --version)
 
 Options:
@@ -11,8 +11,10 @@ Options:
   -t tag --tag tag        Set package tag
   -d desc --desc desc     Set package description
   -c --curated            Display all curated packages
-  -n --normal             Display packages not curated
+  -r --regular            Display packages not curated
   -m --missing            Display missing curated packages
+  -n --native             Limit display to native packages
+  -f --foreign            Limit display to foreign packages
   -v --verbose            Display additional info (csv)
   -h --help               Display help
   --version               Display pcurate version
@@ -44,9 +46,12 @@ class Package:
         optional curated package tag (default None)
     description : str
         optional curated package desc (if None will use stock desc)
+    native: int
+        value of 1 marks package as native (default 0)
     """
 
-    def __init__(self, name, curated=0, tag=None, description=None) -> None:
+    def __init__(self, name, curated=0, tag=None, description=None,
+                 native=0) -> None:
         """init package object representing Arch Linux software package
 
         Parameters
@@ -59,29 +64,33 @@ class Package:
             optional for curated package categorization (default None)
         description : str
             optional curated package desc (if None will use stock desc)
+        native : int
+            value of 1 marks package as native (default 0)
         """
 
         self.name = name
         self.curated = curated
         self.tag = tag
         self.description = description
+        self.native = native
 
     def add(self, db) -> None:
         """takes db connect obj, adds a package and its attributes to db"""
 
-        db.execute("""INSERT OR IGNORE INTO packages VALUES (:name,
-                   :curated, :tag, :description)""", {
-                   'name': self.name, 'curated': self.curated,
-                   'tag': self.tag, 'description': self.description})
+        db.execute("""INSERT OR IGNORE INTO packages VALUES (:name, :curated,
+                   :tag, :description, :native)""", {
+                   'name': self.name, 'curated': self.curated, 'tag': self.tag,
+                   'description': self.description, 'native': self.native})
 
     def modify(self, db) -> None:
         """takes db connect obj, modifies attributes of a package in db"""
 
         db.execute("""UPDATE packages SET curated = ifnull(:curated,curated),
                    tag = ifnull(:tag,tag), description = ifnull(:description,
-                   description) WHERE name = :name""", {
-                   'name': self.name, 'curated': self.curated,
-                   'tag': self.tag, 'description': self.description})
+                   description), native = ifnull(:native,native) WHERE name
+                   = :name""", {'name': self.name, 'curated': self.curated,
+                   'tag': self.tag,'description': self.description,
+                   'native': self.native})
 
     def display(self, db) -> str:
         """takes db connect obj, displays attribs stored for package in db"""
@@ -89,9 +98,10 @@ class Package:
         o = db.query('Select * FROM packages WHERE name = :name',
                      {'name': self.name})
         try:
-            name, curated, tag, description = o[0]
-            status = ',curated,' if curated == 1 else ',normal,'
-            print(name + status + tag + "," + description)
+            name, curated, tag, description, native = o[0]
+            curated = ',curated,' if curated == 1 else ',regular,'
+            native = ',native' if native == 1 else ',foreign'
+            print(name + curated + tag + "," + description + native)
             return o
         except IndexError:
             print("package not excplicitly installed (" + self.name + ")")
@@ -114,8 +124,18 @@ class Database:
 
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS packages (name text PRIMARY KEY,
-                            curated integer,tag text,description text)""")
+        self.cursor.execute("""CREATE TABLE IF NOT EXISTS packages (name text
+                            PRIMARY KEY,curated integer,tag text,description
+                            text,native integer)""")
+        # if db is new assign current db version
+        current_db_version = 1
+        user_ver = int(self.query('PRAGMA user_version')[0][0])
+        user_ver = current_db_version if user_ver == 0 else user_ver
+        self.cursor.execute("PRAGMA user_version = {v:d}".format(v=user_ver))
+        # migration for alpha db
+        if len(self.query("PRAGMA table_info('packages')")) == 4:
+            self.cursor.execute("""ALTER TABLE packages ADD COLUMN native
+                                integer""")
 
     def __enter__(self) -> 'Database':
         """bind db instance to context manager"""
@@ -146,18 +166,31 @@ class Database:
         return self.cursor.fetchall()
 
     def repopulate(self) -> None:
-        """clear and rebuild db entries for all packages not curated"""
+        """rebuild entries for regular pkg and update all pkg native status"""
 
         self.cursor.execute('DELETE FROM packages WHERE curated = 0')
         pkglist = subprocess.check_output(['pacman', '-Qei'])
         pkglist = pkglist.decode('utf-8')
+        nativelist = subprocess.getstatusoutput('pacman -Qqen')
         for line in pkglist.split('\n'):
             if re.search('^Name', line):
                 _, name = line.split(': ', 1)
+                native=0
+                for record in nativelist[1].split('\n'):
+                    native = native + 1 if record == name else native
             elif re.search('^Description', line):
                 _, description = line.split(': ', 1)
-                pkg = Package(name, 0, '', description)
+                # rebuild entries for regular packages that are still installed
+                pkg = Package(name, 0, '', description, int(native))
                 pkg.add(self.cursor)
+                # refresh entries for curated pkg to set their native status
+                o = self.query("""Select * FROM packages WHERE curated = 1 and
+                               name = :name""",{'name': name})
+                for i in range(len(o)):
+                    tag = o[i][2]
+                    description = o[i][3]
+                    pkg = Package(name, 1, tag, description, int(native))
+                    pkg.modify(self.cursor)
 
     def filter(self, filter_file) -> None:
         """takes filter file obj, filter pkg or pkg group members from db"""
@@ -177,22 +210,31 @@ class Database:
         """takes dict of parsed CLI args, sends formatted db info to stdout"""
 
         if args['--verbose']:
-            print("name, status, tag, description")
-        o = self.query("""SELECT * FROM packages WHERE curated = :curated
-                       ORDER BY name""", {'curated': args['--curated']})
-        status = ',curated,' if args['--curated'] else ',normal,'
+            print("name, status, tag, description, native")
+        native = 1 if args['--native'] else None
+        native = 0 if args['--foreign'] else native
+        if native is not None:
+            o = self.query("""SELECT * FROM packages WHERE curated = :curated
+                           AND native = :native ORDER BY name""", {
+                           'curated': args['--curated'], 'native': native})
+        else:
+            o = self.query("""SELECT * FROM packages WHERE curated = :curated
+                           ORDER BY name""", {'curated': args['--curated']})
+        status = ',curated,' if args['--curated'] else ',regular,'
         for i in range(len(o)):
             if not args['--verbose']:
                 print(o[i][0])
             else:
-                print(o[i][0] + status + o[i][2] + ',"' + o[i][3] + '"')
+                native = ",native" if o[i][4] == 1 else ",foreign"
+                print(o[i][0] + status + o[i][2] + ',"' + o[i][3] + '"'
+                      + native)
         return o
 
     def missing(self, args) -> list:
         """takes dict of parsed CLI args, output list of missing curated"""
 
         if args['--verbose']:
-            print("name, status, tag, description")
+            print("name, status, tag, description, native")
         o = self.query("""SELECT * FROM packages WHERE curated = 1
                        ORDER BY name""")
         pkglist = subprocess.check_output(['pacman', '-Qqe'])
@@ -256,7 +298,8 @@ class __Control:
             if args['--set'] or args['--unset']:
                 pkg.modify(db)
                 db.conn.commit()
-            pkg.display(db)
+            else:
+                pkg.display(db)
 
     def filter(self, db) -> None:
         """takes db reference, use to control repopulate and filter of db"""
@@ -272,7 +315,7 @@ def main() -> None:
 
     c = __Control()
     args = docopt(__doc__)
-    if args['--curated'] or args['--normal']:
+    if args['--curated'] or args['--regular']:
         c.output(args)
     elif args['--missing']:
         c.missing(args)
