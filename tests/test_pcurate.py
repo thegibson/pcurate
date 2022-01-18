@@ -1,3 +1,5 @@
+"""Test pcurate module with pytest."""
+
 # standard lib import
 import io
 
@@ -8,15 +10,14 @@ from pcurate import Database, Package
 
 @pytest.fixture
 def db():
-    """ init a new in-memory db for each test function"""
-
+    """Init a new in-memory db for each test function."""
     db = Database(':memory:')
     yield db
     db.close()
 
 
 class __Control:
-    """A class for a simple test control interface; wrapper functions
+    """A class for a simple test control interface; wrapper functions.
 
     Attributes
     ----------
@@ -25,34 +26,29 @@ class __Control:
     """
 
     def __init__(self, db) -> None:
-        """Takes db connect obj"""
-
+        """Take db connect obj."""
         self.db = db
 
     def display(self, pkg, repopulate=True) -> str:
-        """takes pkg ojb, bool to toggle repop; controls pkg changes/display"""
-
+        """Take pkg ojb, bool to toggle repop; controls pkg changes/display."""
         # optional bypass can be used to prevent resetting regular test entries
         if repopulate:
             self.db.repopulate()
         return pkg.display(self.db)
 
     def output(self, args) -> list:
-        """takes dict of simulated args; controls package list output"""
-
+        """Take dict of simulated args; controls package list output."""
         self.db.repopulate()
         return self.db.output(args)
 
     def filter(self, pkgnames) -> None:
-        """takes filter text; control to apply filter using in memory obj"""
-
+        """Take filter text; control to apply filter using in memory obj."""
         with io.StringIO(pkgnames) as filter_file:
             self.db.filter(filter_file)
 
 
 def test_package_set(db) -> None:
-    """test setting a package as curated status"""
-
+    """Test setting a package as curated status."""
     c = __Control(db)
     # add native test_package to db as a curated package with tag and desc
     pkg = Package('test_package', 1, 'test_tag', 'test_description', 1)
@@ -80,10 +76,8 @@ def test_package_set(db) -> None:
     assert native == 1
 
 
-
 def test_package_modify(db) -> None:
-    """test modifications of curated package data"""
-
+    """Test modifications of curated package data."""
     c = __Control(db)
     # add test_package to db as a curated package with attributes
     pkg = Package('test_package', 1, 'test_tag', 'test_description', 0)
@@ -109,8 +103,7 @@ def test_package_modify(db) -> None:
 
 
 def test_regular_list(db) -> None:
-    """check to make sure regular database output has some content"""
-
+    """Check to make sure regular database output has some content."""
     c = __Control(db)
     # regular output should have a number of rows after repopulating
     o = c.output({'--curated': False, '--regular': True, '--verbose': False,
@@ -124,8 +117,7 @@ def test_regular_list(db) -> None:
 
 
 def test_filtering(db) -> None:
-    """test filter processing, using the in-memory file object"""
-
+    """Test filter processing, using the in-memory file object."""
     c = __Control(db)
     # add 3 test packages, and filter 2 of them
     pkg = Package('filter_one', 0, 'test_tag', 'test_description', 1)
@@ -146,8 +138,7 @@ def test_filtering(db) -> None:
 
 
 def test_missing(db) -> None:
-    """test detection of missing curated packages"""
-
+    """Test detection of missing curated packages."""
     # add curated test package
     pkg = Package('test_package', 1, 'test_tag', 'test_description', 1)
     pkg.add(db)

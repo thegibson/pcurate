@@ -1,4 +1,4 @@
-"""pcurate
+"""pcurate.
 
 Usage:
   pcurate PACKAGE_NAME [-u | -s [-t TAG] [-d DESCRIPTION]]
@@ -34,7 +34,7 @@ from docopt import docopt
 
 
 class Package:
-    """A class to store and retrieve info for Arch Linux software packages
+    """A class to store and retrieve info for Arch Linux software packages.
 
     Attributes
     ----------
@@ -52,7 +52,7 @@ class Package:
 
     def __init__(self, name, curated=0, tag=None, description=None,
                  native=0) -> None:
-        """init package object representing Arch Linux software package
+        """Init package object representing Arch Linux software package.
 
         Parameters
         ----------
@@ -67,7 +67,6 @@ class Package:
         native : int
             value of 1 marks package as native (default 0)
         """
-
         self.name = name
         self.curated = curated
         self.tag = tag
@@ -75,16 +74,14 @@ class Package:
         self.native = native
 
     def add(self, db) -> None:
-        """takes db connect obj, adds a package and its attributes to db"""
-
+        """Take db connect obj, adds a package and its attributes to db."""
         db.execute("""INSERT OR IGNORE INTO packages VALUES (:name, :curated,
                    :tag, :description, :native)""", {
                    'name': self.name, 'curated': self.curated, 'tag': self.tag,
                    'description': self.description, 'native': self.native})
 
     def modify(self, db) -> None:
-        """takes db connect obj, modifies attributes of a package in db"""
-
+        """Take db connect obj, modifies attributes of a package in db."""
         db.execute("""UPDATE packages SET curated = ifnull(:curated,curated),
                    tag = ifnull(:tag,tag), description = ifnull(:description,
                    description), native = ifnull(:native,native) WHERE name
@@ -93,8 +90,7 @@ class Package:
                    'description': self.description, 'native': self.native})
 
     def display(self, db) -> str:
-        """takes db connect obj, displays attribs stored for package in db"""
-
+        """Take db connect obj, displays attribs stored for package in db."""
         o = db.query('Select * FROM packages WHERE name = :name',
                      {'name': self.name})
         try:
@@ -109,7 +105,7 @@ class Package:
 
 
 class Database:
-    """A class to handle a sqlite db of Arch linux software package info
+    """A class to handle a sqlite db of Arch linux software package info.
 
     Attributes
     ----------
@@ -120,8 +116,7 @@ class Database:
     """
 
     def __init__(self, db_path) -> None:
-        """takes str path to db and initialize it, create it if not exist"""
-
+        """Take str path to db and initialize it, create it if not exist."""
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS packages (name text
@@ -138,36 +133,30 @@ class Database:
                                 integer""")
 
     def __enter__(self) -> 'Database':
-        """bind db instance to context manager"""
-
+        """Bind db instance to context manager."""
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb) -> None:
-        """called when context mgr leaves context, args are for exceptions"""
-
+        """Call when context mgr leaves context, args are for exceptions."""
         self.close()
 
     def close(self, commit=True) -> None:
-        """takes bool to toggle change commit (default True), and closes db"""
-
+        """Take bool to toggle change commit (default True), and closes db."""
         if commit:
             self.conn.commit()
         self.conn.close()
 
     def execute(self, sql, params=None) -> None:
-        """takes sql str w optional named placeholders"""
-
+        """Take sql str w optional named placeholders."""
         self.cursor.execute(sql, params or ())
 
     def query(self, sql, params=None) -> list:
-        """takes sql str w optional named placeholders and returns rows"""
-
+        """Take sql str w optional named placeholders and returns rows."""
         self.cursor.execute(sql, params or ())
         return self.cursor.fetchall()
 
     def repopulate(self) -> None:
-        """rebuild entries for regular pkg and update all pkg native status"""
-
+        """Rebuild entries for regular pkg and update all pkg native status."""
         self.cursor.execute('DELETE FROM packages WHERE curated = 0')
         pkglist = subprocess.check_output(['pacman', '-Qei'])
         pkglist = pkglist.decode('utf-8')
@@ -193,8 +182,7 @@ class Database:
                     pkg.modify(self.cursor)
 
     def filter(self, filter_file) -> None:
-        """takes filter file obj, filter pkg or pkg group members from db"""
-
+        """Take filter file obj, filter pkg or pkg group members from db."""
         filters = ''
         for line in filter_file:
             filters += line
@@ -207,8 +195,7 @@ class Database:
                          and curated = 0""", {'name': name})
 
     def output(self, args) -> list:
-        """takes dict of parsed CLI args, sends formatted db info to stdout"""
-
+        """Take dict of parsed CLI args, sends formatted db info to stdout."""
         if args['--verbose']:
             print("name, status, tag, description, native")
         native = 1 if args['--native'] else None
@@ -231,8 +218,7 @@ class Database:
         return o
 
     def missing(self, args) -> list:
-        """takes dict of parsed CLI args, output list of missing curated"""
-
+        """Take dict of parsed CLI args, output list of missing curated."""
         if args['--verbose']:
             print("name, status, tag, description, native")
         o = self.query("""SELECT * FROM packages WHERE curated = 1
@@ -252,7 +238,7 @@ class Database:
 
 
 class __Control:
-    """A class to set up config and provide a simple control interface
+    """A class to set up config and provide a simple control interface.
 
     Attributes
     ----------
@@ -265,8 +251,7 @@ class __Control:
     """
 
     def __init__(self) -> None:
-        """set up file paths; respect XDG_CONFIG_HOME if it exists"""
-
+        """Set up file paths; respect XDG_CONFIG_HOME if it exists."""
         xdg = os.environ.get('XDG_CONFIG_HOME')
         if not xdg:
             xdg = os.path.expandvars('$HOME') + '/.config'
@@ -276,21 +261,18 @@ class __Control:
         self.filter_path = self.config_path + '/filter.txt'
 
     def output(self, args) -> None:
-        """takes args, use to control package list output"""
-
+        """Take args, use to control package list output."""
         with Database(self.db_path) as db:
             self.filter(db)
             db.output(args)
 
     def missing(self, args) -> None:
-        """takes args, use to control display of missing curated pkgs"""
-
+        """Take args, use to control display of missing curated pkgs."""
         with Database(self.db_path) as db:
             db.missing(args)
 
     def display(self, args) -> None:
-        """takes args, use to control pkg changes/display"""
-
+        """Take args, use to control pkg changes/display."""
         pkg = Package(args['PACKAGE_NAME'], args['--set'],
                       args['--tag'], args['--desc'])
         with Database(self.db_path) as db:
@@ -302,8 +284,7 @@ class __Control:
                 pkg.display(db)
 
     def filter(self, db) -> None:
-        """takes db reference, use to control repopulate and filter of db"""
-
+        """Take db reference, use to control repopulate and filter of db."""
         db.repopulate()
         if os.path.isfile(self.filter_path):
             with open(self.filter_path, 'r') as filter_file:
@@ -311,8 +292,7 @@ class __Control:
 
 
 def main() -> None:
-    """dispatch commands based on CLI args parsed by docopt"""
-
+    """Dispatch commands based on CLI args parsed by docopt."""
     c = __Control()
     args = docopt(__doc__)
     if args['--curated'] or args['--regular']:
